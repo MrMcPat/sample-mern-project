@@ -1,4 +1,3 @@
-const { v4: uuidv4 } = require("uuid");
 const { validationResult } = require("express-validator");
 
 const HttpError = require("../models/http-error");
@@ -61,15 +60,20 @@ async function signup(req, res, next) {
   res.status(201).json({ user: createdUser.toObject({ getters: true }) });
 }
 
-function login(req, res, next) {
+async function login(req, res, next) {
   const { email, password } = req.body;
 
-  const identifiedUser = DUMMY_USERS.find((u) => u.email === email);
-  if (!identifiedUser || identifiedUser.password !== password) {
-    throw new HttpError(
-      "Could not identify user, credentials seem to be wrong.",
-      401
-    );
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email });
+  } catch (err) {
+    const error = new HttpError("Login failed, please try again later.", 500);
+    return next(error);
+  }
+
+  if (!existingUser || existingUser.password !== password) {
+    const error = new HttpError("Invalid credentials, login failed.", 401);
+    return next(error);
   }
 
   res.json({ message: "Logged in!" });
